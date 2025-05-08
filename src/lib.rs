@@ -67,7 +67,7 @@ impl AwsExtension {
         default_settings.insert("volume_type".to_string(), json!("gp2"));
 
         Self {
-            name: "aws".to_string(),
+            name: "ec2".to_string(),
             provider_type: "cloud".to_string(),
             default_settings,
             ec2_client: None,
