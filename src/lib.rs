@@ -2,49 +2,20 @@ use aws_sdk_ec2::operation::describe_instances::DescribeInstancesOutput;
 use aws_sdk_ec2::operation::describe_volumes::DescribeVolumesOutput;
 // File: cpi_aws/src/lib.rs
 use lib_cpi::{
-    ActionParameter, ActionDefinition, ActionResult, CpiExtension, ParamType,
-    action, param, validation
+    ActionDefinition, ActionResult, CpiExtension, ParamType, param, validation
 };
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::sync::Arc;
 
 // AWS SDK crates
 use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_ec2::{Client};
+use aws_sdk_ec2::Client;
 use aws_sdk_ec2::config::Region;
+#[allow(unused_imports)]
 use aws_sdk_ec2::types::{Filter, Tag, ResourceType, InstanceType, TagSpecification};
 
-// Internal struct to map AWS responses to simpler forms
-#[derive(Debug)]
-struct EC2Instance {
-    id: String,
-    name: String,
-    state: String,
-    instance_type: String,
-    public_ip: Option<String>,
-    private_ip: Option<String>,
-}
-
-#[derive(Debug)]
-struct EC2Volume {
-    id: String,
-    size_gb: i64,
-    state: String,
-    availability_zone: String,
-    attached_to: Option<String>,
-}
-
-#[derive(Debug)]
-struct EC2Snapshot {
-    id: String,
-    volume_id: String,
-    size_gb: i64,
-    state: String,
-    description: Option<String>,
-}
-
 #[unsafe(no_mangle)]
+#[allow(improper_ctypes_definitions)]
 pub extern "C" fn get_extension() -> *mut dyn CpiExtension {
     Box::into_raw(Box::new(AwsExtension::new()))
 }
@@ -86,7 +57,7 @@ impl AwsExtension {
             .or_default_provider()
             .or_else(Region::new("us-east-1"));
             
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+        let shared_config = aws_config::defaults(aws_config::BehaviorVersion::latest()).region(region_provider).load().await;
         
         let client = Client::new(&shared_config);
         self.ec2_client = Some(client.clone());
@@ -105,35 +76,35 @@ impl AwsExtension {
     }
     
     // Helper function to create a name filter for queries
-    fn create_name_filter(&self, name: &str) -> Filter {
-        Filter::builder()
-            .name("tag:Name")
-            .values(name)
-            .build()
-    }
+    // fn create_name_filter(&self, name: &str) -> Filter {
+    //     Filter::builder()
+    //         .name("tag:Name")
+    //         .values(name)
+    //         .build()
+    // }
     
     // Implementation of individual actions
     
-    async fn test_install(&mut self) -> ActionResult {
-        // Just try to get the EC2 client and list regions to verify credentials work
-        let client = self.get_client(None).await?;
-        
-        let result = client.describe_regions()
-            .send()
-            .await
-            .map_err(|e| format!("Failed to connect to AWS: {:?}", e))?;
-        
-        let regions = result.regions()
-                            .iter()
-                            .filter_map(|r| r.region_name().map(|s| s.to_string()))
-                            .collect::<Vec<String>>();
-        
-        Ok(json!({
-            "success": true,
-            "version": "AWS SDK for Rust",
-            "regions": regions
-        }))
-    }
+    // async fn test_install(&mut self) -> ActionResult {
+    //     // Just try to get the EC2 client and list regions to verify credentials work
+    //     let client = self.get_client(None).await?;
+    //     
+    //     let result = client.describe_regions()
+    //         .send()
+    //         .await
+    //         .map_err(|e| format!("Failed to connect to AWS: {:?}", e))?;
+    //     
+    //     let regions = result.regions()
+    //                         .iter()
+    //                         .filter_map(|r| r.region_name().map(|s| s.to_string()))
+    //                         .collect::<Vec<String>>();
+    //     
+    //     Ok(json!({
+    //         "success": true,
+    //         "version": "AWS SDK for Rust",
+    //         "regions": regions
+    //     }))
+    // }
     
     async fn list_workers(&mut self, region: Option<&str>) -> ActionResult {
         let client = self.get_client(region).await?;
